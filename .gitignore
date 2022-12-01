@@ -1,0 +1,5 @@
+.pio
+.vscode
+src/env.h
+compile_commands.json
+.gitignore_local
