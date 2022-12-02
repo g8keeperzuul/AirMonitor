@@ -56,7 +56,7 @@ bool connectMQTTBroker(const char *client_id, const char *username, const char *
 // }
 
 
-void publish(String &topic, String &payload){
+void publish(const String &topic, const String &payload){
     Serial.println("\nPublishing message: " + topic + " : " + payload);
     //const char* payload_ch = payload.c_str();
     mqttclient.publish(topic, payload, NOT_RETAINED, QOS_0);
@@ -77,23 +77,56 @@ void publishOnline(const char* availability_topic){
 bool subscribeTopics(std::vector<std::string> topicVector)
 {
   bool completeSuccess = true;
-  Serial.println(F("Subscribing to topics..."));
   for (size_t i = 0; i < topicVector.size(); i++)
   {
-    bool success = mqttclient.subscribe(topicVector[i].c_str());
-    if (success)
+    bool success = subscribeTopic(topicVector[i]);
+    if (!success)
     {
-      Serial.print(F("SUCCESS : "));
-    }
-    else
-    {
-      Serial.print(F("FAILED :  "));
       completeSuccess = false;
-    }
-    Serial.println(topicVector[i].c_str());
+    }    
   }
-  Serial.println(F("Done subscribing."));
   return completeSuccess;
+}
+
+bool subscribeTopic(std::string topic){  
+  Serial.print(F("Subscribe to topic ")); Serial.print(topic.c_str()); Serial.print("... ");
+  bool success = mqttclient.subscribe(topic.c_str());
+  if(success){
+    Serial.println(F("OK"));    
+  }
+  else{
+    Serial.println(F("FAILED!"));
+  }
+  return success;
+}
+
+/**
+ * Pushes a pending operation onto the queue for later processing.
+ * 
+ * Main program must first() and pop() message requests from queue and process.
+*/
+void messageReceived(String &topic, String &payload) {
+  Serial.println("\nIncoming message: " + topic + " : " + payload);
+
+  // Note: Do not use the mqttclient in the callback to publish, subscribe or
+  // unsubscribe as it may cause deadlocks when other things arrive while
+  // sending and receiving acknowledgments. Instead, change a global variable,
+  // or push to a queue and handle it in the loop after calling `mqttclient.loop()`.
+
+  // iterate thru config/contols until you have a setter topic that matches the inbound topic  
+  for (size_t i = 0; i < discovery_config_metadata_list.size(); i++){
+    String config_set_topic = String(discovery_config_metadata_list[i].set_topic.c_str());
+    if(config_set_topic.equals(topic)){
+      // the message was received on a topic that we are subscribed to AND is a config/control topic
+      pending_config_op op;
+      op.config_meta = discovery_config_metadata_list[i];
+      op.value = payload;
+
+      pending_ops.push(op);
+
+      break; // exit for-loop since topic found
+    }
+  }
 }
 
 std::string buildAvailabilityTopic(const std::string device_type, const std::string device_id){  
@@ -423,6 +456,33 @@ int publishDiscoveryMessages()
   }
   
   return pending_discovery_count;
+}
+
+/**
+ * Populate list of topics to subscribe to
+ * This is derived from discovery_config_metadata_list. If getter and setter topics are not explicitly defined for each config/control,
+ * then defaults are generated. 
+ * A list of setter topics is returned. 
+ */
+std::vector<std::string> getAllSubscriptionTopics(std::string device_id){    
+  std::vector<std::string> topics = { }; 
+
+  // getter and setter topics are only defined for config/control messages
+  for (size_t i = 0; i < discovery_config_metadata_list.size(); i++){
+    // if a custom setter topic is not provided, create one with the default naming convention
+    if(discovery_config_metadata_list[i].set_topic.empty()){
+      discovery_config_metadata_list[i].set_topic = buildSetterTopic(discovery_config_metadata_list[i].device_type, device_id, discovery_config_metadata_list[i].control_name);
+      Serial.print("Initializing setter topic for "); Serial.print(discovery_config_metadata_list[i].control_name.c_str()); Serial.print(" : "); Serial.println(discovery_config_metadata_list[i].set_topic.c_str());
+    }
+    // if a custom getter topic is not provided, create one with the default naming convention
+    if(discovery_config_metadata_list[i].get_topic.empty()){
+      discovery_config_metadata_list[i].get_topic = buildGetterTopic(discovery_config_metadata_list[i].device_type, device_id, discovery_config_metadata_list[i].control_name);      
+      Serial.print("Initializing getter topic for "); Serial.print(discovery_config_metadata_list[i].control_name.c_str()); Serial.print(" : "); Serial.println(discovery_config_metadata_list[i].get_topic.c_str());
+    }    
+    Serial.print("Adding subscription topic: "); Serial.println(discovery_config_metadata_list[i].set_topic.c_str());
+    topics.push_back(discovery_config_metadata_list[i].set_topic);
+  }  
+  return topics;
 }
 
 void purgeDiscoveryMetadata(){

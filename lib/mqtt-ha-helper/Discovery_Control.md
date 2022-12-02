@@ -14,10 +14,12 @@ const std::string STATE_TOPIC = buildStateTopic("sensor", std::string(DEVICE_ID)
 
 Controls/Configuration Discovery is a special case that requires a dedicated topic for getting and setting the control.
 
+```
 homeassistant/{device_type}/{device_id}/{control_name}/set
 homeassistant/{device_type}/{device_id}/{control_name}/get
+```
 
-The device_type and control_name are defined in the next step (3D). The device_id was defined in step 1.
+The **device_type** and **control_name** are defined in the next step (3D). The **device_id** was defined in step 1.
 
 ## 3D. Define the Control(s) ##
 
@@ -38,6 +40,8 @@ control_name | Internal label for control (no spaces)
 custom_settings | JSON snippet with escaped quotes - contents depend on device_type - ie. "\"min\": 1, \"max\": 10000"
 icon | From [MaterialDesign](https://materialdesignicons.com/) reference
 unit | Any unit
+set_topic | (optional) Name of topic used to set the value of this control
+get_topic | (optional) Name of topic used to reflect back the actual state of this control to all subscribers
 
 Example:
 ```
@@ -46,7 +50,12 @@ Example:
   tempoffset.custom_settings = "\"min\": 0, \"max\": 10000, \"step\": 10, \"initial\": 0";
   tempoffset.icon = "mdi:home-thermometer";
   tempoffset.unit = "hundredths °C";
+  //tempoffset.set_topic = if not set, it will be generated
+  //tempoffset.get_topic = if not set, it will be generated  
 ```
+
+For each config/control, a getter and setter can be set. If not provided, then default topic names are used
+(see **buildGetterTopic()** and **buildSetterTopic()**)
 
 ## 4D. Provide All Necessary Details to Build a Config/Control Discovery Message ##
 
@@ -63,58 +72,39 @@ discovery_config getDiscoveryMessage(discovery_config_metadata disc_meta){
                                       AVAILABILITY_TOPIC);                                 
 }
 ```
-## 6D. Return ??? Values ##
+## 6D. Return Config/Control Values ##
 
-As per step 3, format your JSON payload like:
-The payload is expected to be modelled like this:
-```
-{
-    "<device_class>": value,
-    "<device_class>_details:{ <collection of any key-value pairs> }
-}
-```
-The *_details attribute is only necessary if has_sub_attr = true
+(optional) You could return config/control values as part of the diagnostic message. Any updates to these values by the setter topic will be immediately reflected by the getter topic, but not in the diagnostic payload. Diagnostic values are only updated on a fixed periodic schedule. 
 
-and publish it to the **STATE_TOPIC** using:
-```
-void publish(String &topic, String &payload)
-```
+## 7 (NEW). Implement Config/Control Update Handler ##
 
+This step is unique to config/control elements since an action needs to be performed when receiving an MQTT message. This is typically setting a device configuration value or toggling a capability. 
 
----
-```
-const std::string SET_<control_name>_TOPIC = buildSetterTopic(<device_type>, std::string(DEVICE_ID), <control_name>);
+The device will subscribe to all config/control setter topics so that updates can be received via MQTT.
+Once the config/control has been updated, the device will publish the new value to the getter topic so that Home Assistant can accurately reflect the device state.
 
-const std::string GET_<control_name>_TOPIC = buildGetterTopic(<device_type>, std::string(DEVICE_ID), <control_name>"); 
-```
+Subscription is handled automatically by the library. The list of all setter topics and subscription to each of them is automatically handled as part of **assertConnectivity()**.
 
-For each control, the *setter topic* must be subscribed to so that updates to the device can be sent via MQTT.
-```
-std::vector<std::string> getAllSubscriptionTopics()
-```
-
-A handler is needed for each control that can be updated via a topic.
-
-Within the generic subscription handler:
+When a message is received on a subscribed-to topic, the generic subscription handler is invoked automatically:
 ```
 void messageReceived(String &topic, String &payload)
 ```
-test the topic and invoke a specialized handler with the payload
-```
-            String temp_offset_topic_str = String(SUB_TEMPOFFSET_TOPIC);
-            if(temp_offset_topic_str.equals(topic)){
-              co2_temp_offset = payload.toInt(); 
-              set_temp_offset = true;
-              if (co2_temp_offset < 0) { 
-                co2_temp_offset = 0;        
-              } 
-              Serial.print(F("CO2 temperature offset updated to (one-hundredths of a degree celcius): ")); Serial.println(co2_temp_offset);
-            }
-```
+which will push a pending operation onto a queue for later processing.
 
-Once the update has been processed, to reflect the change back to Home Assistant, publish it to the *getter topic*.
+_The main program must first() and pop() message requests from **pending_ops** queue and process._
+This is where the actual request is handled.
 ```
-void publish<control_name>(){    
-    publishConfigValue(GET_<control_name>_TOPIC, <control_value>); 
+while(!pending_ops.empty()){
+    pending_config_op op = pending_ops.front();
+    Serial.print(F("Processing pending message : ")); Serial.println(op.config_meta.control_name.c_str());
+
+    if(op.config_meta.control_name.compare("temperature_offset") == 0){ 
+      // get the provided value
+      int some_value = op.value.toInt(); // datatype will depend on config/control
+      ... handle message ... 
+      // publish updated value so that Home Assistant reflects device actual state
+      publish(op.config_meta.get_topic.c_str(), String(some_value));
+    }
 }
 ```
+

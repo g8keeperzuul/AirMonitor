@@ -36,16 +36,7 @@ const std::string DIAGNOSTIC_TOPIC = buildDiagnosticTopic("sensor", std::string(
 // All sensor updates are published in a single complex json payload to a single topic
 const std::string STATE_TOPIC = buildStateTopic("sensor", std::string(DEVICE_ID)); // homeassistant/sensor/featherm0/state
 
-// *** Control/Config Topics ***
-
-// Temperature offset config value is set and retrieved via two dedicated topics. The message payload is just the value itself.
-const std::string SET_TEMPOFFSET_TOPIC = buildSetterTopic("sensor", std::string(DEVICE_ID), "temperature_offset"); // homeassistant/sensor/environmental/featherm0/temperature_offset/set
-const PROGMEM char *SUB_TEMPOFFSET_TOPIC = SET_TEMPOFFSET_TOPIC.c_str(); 
-const std::string GET_TEMPOFFSET_TOPIC = buildGetterTopic("sensor", std::string(DEVICE_ID), "temperature_offset"); // homeassistant/sensor/environmental/featherm0/temperature_offset/get
-const PROGMEM char *PUB_TEMPOFFSET_TOPIC = GET_TEMPOFFSET_TOPIC.c_str(); 
-
 // *****************************
-
 
 /*
   device_class : https://developers.home-assistant.io/docs/core/entity/sensor?_highlight=device&_highlight=class#available-device-classes
@@ -101,13 +92,15 @@ std::vector<discovery_metadata> getAllDiscoveryMessagesMetadata(){
 
 // build discovery config/control message - step 1 of 4
 std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
-  discovery_config_metadata tempoffset/*, useambpres, altoffset, co2ref, refrate*/;
+  discovery_config_metadata tempoffset, altoffset/*, useambpres, co2ref, refrate*/;
 
   tempoffset.device_type = "number";
   tempoffset.control_name = "temperature_offset";
   tempoffset.custom_settings = "\"min\": 0, \"max\": 10000, \"step\": 10, \"initial\": 0";
   tempoffset.icon = "mdi:home-thermometer";
-  tempoffset.unit = "hundredths °C";
+  tempoffset.unit = "hundredths °C";  
+  //tempoffset.set_topic = if not set, it will be generated
+  //tempoffset.get_topic = if not set, it will be generated
 
   // useambpres.device_type = "switch";
   // useambpres.control_name = "use_ambient_pressure";
@@ -115,11 +108,11 @@ std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
   // useambpres.icon = "mdi:cog-sync";
   // useambpres.unit = "mPa";
 
-  // altoffset.device_type = "number";
-  // altoffset.control_name = "altitude_offset";
-  // altoffset.custom_settings = "\"min\": -450, \"max\": 8850, \"step\": 5, \"initial\": 0";
-  // altoffset.icon = "mdi:image-filter-hdr";
-  // altoffset.unit = "meters";
+  altoffset.device_type = "number";
+  altoffset.control_name = "altitude_offset";
+  altoffset.custom_settings = "\"min\": -450, \"max\": 8850, \"step\": 5, \"initial\": 0";
+  altoffset.icon = "mdi:image-filter-hdr";
+  altoffset.unit = "meters";
 
   // co2ref.device_type = "number";
   // co2ref.control_name = "co2_reference";
@@ -133,7 +126,7 @@ std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
   // refrate.icon = "mdi:refresh-circle";
   // refrate.unit = "minutes";
 
-  std::vector<discovery_config_metadata> dcm = { tempoffset/*, useambpres, altoffset, co2ref, refrate*/ };  
+  std::vector<discovery_config_metadata> dcm = { tempoffset, altoffset/*, useambpres, co2ref, refrate*/ };  
   return dcm;
 }
 
@@ -289,21 +282,60 @@ void publishDiagnosticData(){
 }
 
 
-void messageReceived(String &topic, String &payload) {
-  Serial.println("\nIncoming message: " + topic + " : " + payload);
+std::queue<pending_config_op> pending_ops = {};
 
-  // Note: Do not use the mqttclient in the callback to publish, subscribe or
-  // unsubscribe as it may cause deadlocks when other things arrive while
-  // sending and receiving acknowledgments. Instead, change a global variable,
-  // or push to a queue and handle it in the loop after calling `mqttclient.loop()`.
+// Processes pending operations on the pending_ops queue.
+void processMessages(){
+  while(!pending_ops.empty()){
+    pending_config_op op = pending_ops.front();
+    Serial.print(F("Processing pending message : ")); Serial.println(op.config_meta.control_name.c_str());
 
-  // Normally we only care about listening to the ".../refresh_rate/set" topic
-  // However, early on we want to check the ".../refresh_rate/get" topic to see if a previously saved setting is available.
-  // After checking, we will then unsubscribe from the ".../refresh_rate/get" topic. 
-  // String set_rate_topic_str = String(SUB_RATE_TOPIC);
-  // String get_rate_topic_str = String(PUB_RATE_TOPIC);  
-  // if ((set_rate_topic_str.equals(topic)) || (get_rate_topic_str.equals(topic))){
-  // }
+    if(op.config_meta.control_name.compare("temperature_offset") == 0){
+
+      Serial.print(F("SCD30 Set temperature offset... "));
+      int temp_offset = op.value.toInt();
+      if(temp_offset < 0){ temp_offset = 0; }
+      if(scd30.setTemperatureOffset(temp_offset)){
+        Serial.println(F("OK"));
+      }
+      else{
+        Serial.println(F("FAILED!"));
+      }
+      Serial.print("SCD30 temperature offset = "); Serial.println(scd30.getTemperatureOffset());
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), String(temp_offset));
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }
+    else if(op.config_meta.control_name.compare("altitude_offset") == 0){
+
+      Serial.print(F("SCD30 Set altitude offset... "));
+      int alt_offset = op.value.toInt();
+      if(alt_offset < -450){ alt_offset = -450; }
+      if(alt_offset > 8850){ alt_offset = 8850; }
+      if(scd30.setAltitudeOffset(alt_offset)){
+        Serial.println(F("OK"));
+      }
+      else{
+        Serial.println(F("FAILED!"));
+      }
+      Serial.print("SCD30 altitude offset = "); Serial.println(scd30.getAltitudeOffset());
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), String(alt_offset));
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }
+    else{
+      // operation ignored; delete from queue anyway to void endless loop
+      Serial.print(F("Message ignored! : ")); Serial.println(op.config_meta.control_name.c_str());
+      pending_ops.pop();
+    }
+  }
+  
 }
 
 void indicateWifiProblem(byte return_code){
@@ -314,11 +346,7 @@ void indicateMQTTProblem(byte return_code){
   Serial.println(F("ERROR: MQTT problem!"));
 }
 
-// populate list of topics to subscribe to
-std::vector<std::string> getAllSubscriptionTopics(){  
-  std::vector<std::string> topics = { }; 
-  return topics;
-}
+
 
 // Runs until network and broker connectivity established and all subscriptions successful
 // If network connectivity is lost and re-established, re-initialize the MQTT client
@@ -346,7 +374,7 @@ void assertConnectivity(){
     // at this point has network connection and broker connection
 
     if(subscription_required){ // only happens when MQTT client is (re)initialized due to network disconnect
-      if(!subscribeTopics(getAllSubscriptionTopics())){
+      if(!subscribeTopics(getAllSubscriptionTopics(std::string(DEVICE_ID)))){
         // if there is a problem with subscribing to a topic, then disconnect from the broker and try again
         indicateMQTTProblem(MQTT_SUB_ERR);
         mqttclient.disconnect();              
@@ -404,6 +432,12 @@ void setup()
     reset();
   }
 
+  // This metadata is assembled into HA-compatible discovery topics and payloads
+  discovery_metadata_list = getAllDiscoveryMessagesMetadata(); 
+  discovery_config_metadata_list = getAllDiscoveryConfigMessagesMetadata(); // must be defined before first assertConnectivity()
+  discovery_measured_diagnostic_metadata_list = getAllDiscoveryMeasuredDiagnosticMessagesMetadata();
+  discovery_fact_diagnostic_metadata_list = getAllDiscoveryFactDiagnosticMessagesMetadata();
+
   // Connect to wifi & mqtt & subscribe
   if(initWifi()){
     assertConnectivity();  // Runs until network and broker connectivity established and all subscriptions successful
@@ -418,11 +452,7 @@ void setup()
 
   Serial.println(F("************************************"));
 
-  // This metadata is assembled into HA-compatible discovery topics and payloads
-  discovery_metadata_list = getAllDiscoveryMessagesMetadata(); 
-  discovery_config_metadata_list = getAllDiscoveryConfigMessagesMetadata();
-  discovery_measured_diagnostic_metadata_list = getAllDiscoveryMeasuredDiagnosticMessagesMetadata();
-  discovery_fact_diagnostic_metadata_list = getAllDiscoveryFactDiagnosticMessagesMetadata();
+
   
   // Must successfully publish all discovery messages before proceding
 
@@ -433,7 +463,7 @@ void setup()
   while(discovery_messages_pending_publication != 0);
 
   // no longer need discovery metadata, so purge it from memory
-  purgeDiscoveryMetadata();
+  //purgeDiscoveryMetadata();
 
   // Publish availability online message (just once after all discovery messages have been successfully published)
   publishOnline(AVAILABILITY_TOPIC.c_str());
@@ -445,8 +475,8 @@ unsigned long lastMillis = 0;
 void loop()
 {
   mqttclient.loop(); // potential call to messageReceived()
-  assertConnectivity(); // Runs until network and broker connectivity established and all subscriptions successful
-
+  processMessages(); // deal with any pending_ops added by messageReceived() handler
+  
   if (millis() - lastMillis > refresh_rate) {   
     lastMillis = millis();
     
@@ -455,4 +485,5 @@ void loop()
     publishOnline(AVAILABILITY_TOPIC.c_str());
     publishDiagnosticData();
   }
+  assertConnectivity(); // Runs until network and broker connectivity established and all subscriptions successful
 }

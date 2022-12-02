@@ -103,6 +103,9 @@ bool assertNetworkConnectivity(const char *ssid, const char *passphrase){
 
 void printNetworkDetails()
 {
+  Serial.println("");
+  Serial.println("Network details:");  
+
   Serial.print(F("WiFi firmware version: "));
   Serial.println(WiFi.firmwareVersion());  
 

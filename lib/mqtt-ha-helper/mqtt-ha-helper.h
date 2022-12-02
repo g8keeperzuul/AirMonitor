@@ -4,6 +4,7 @@
 #include <WiFi101.h> // for WiFiClient
 #include <MQTT.h>
 #include <vector>
+#include <queue>
 #include <string>
 
 // Not used by this library, but meant to be used by the users of this library between calls to connectMQTTBroker()
@@ -47,7 +48,7 @@ struct discovery_metadata{
                                   // This means your payload should have a "<attrib>_details: {...}" where all sub-attributes will be associated with "<attrib>" in Home Assistant.
   std::string icon;               // https://materialdesignicons.com/
   std::string unit;               // see supported units for device_class (can make up your own unit as well) https://developers.home-assistant.io/docs/core/entity/sensor/#available-device-classes
-  bool published = false;         // publication success flag
+  bool published = false;         // publication success flag; set automatically
 };
 
 struct discovery_config_metadata{
@@ -56,7 +57,9 @@ struct discovery_config_metadata{
   std::string custom_settings;    // JSON snippet with escaped quotes - contents depend on device_type - ie. "\"min\": 1, \"max\": 10000"
   std::string icon;               // https://materialdesignicons.com/
   std::string unit;               // ppm, ticks, meters, C, F, (anything)
-  bool published = false;         // publication success flag
+  std::string set_topic;          // Topic used to set configuration; set automatically if not provided
+  std::string get_topic;          // Topic used to get configuration; set automatically if not provided
+  bool published = false;         // publication success flag; set automatically
 };
 
 // Diagnostic can either be a fact (like IP address) or a measurable value (like RSSI)
@@ -68,19 +71,25 @@ struct discovery_measured_diagnostic_metadata{
   std::string diag_attr;          // Name of json attribute within diagnostic message payload
   std::string icon;               // https://materialdesignicons.com/
   std::string unit;               // ppm, ticks, meters, C, F, (anything)
-  bool published = false;         // publication success flag
+  bool published = false;         // publication success flag; set automatically
 };
 
 struct discovery_fact_diagnostic_metadata{  
   std::string device_type;        // Entity such as number | switch | light | sensor ...  https://developers.home-assistant.io/docs/core/entity
   std::string diag_attr;          // Name of json attribute within diagnostic message payload
   std::string icon;               // https://materialdesignicons.com/  
-  bool published = false;         // publication success flag
+  bool published = false;         // publication success flag; set automatically
 };
 
 struct discovery_config{          // Home Assistant MQTT Discovery https://www.home-assistant.io/docs/mqtt/discovery/
   std::string topic;              // discovery topic in the form <discovery_prefix>/<component>/[<node_id>/]<object_id>/config
   std::string payload;            // discovery details
+};
+
+// messageReceived() pushes instance of pending_config_op to global pending_ops queue
+struct pending_config_op{
+  discovery_config_metadata config_meta; // details of the request, including setter topic message received on
+  String value;                   // the value sent to the setter topic
 };
 
 // *********************************************************************************************************************
@@ -91,7 +100,7 @@ extern std::vector<discovery_metadata> discovery_metadata_list;                 
 extern std::vector<discovery_config_metadata> discovery_config_metadata_list;                           // list of data used to construct discovery_config for config/control discovery
 extern std::vector<discovery_measured_diagnostic_metadata> discovery_measured_diagnostic_metadata_list; // list of data used to construct discovery_config for measured diagnostics discovery (like RSSI) 
 extern std::vector<discovery_fact_diagnostic_metadata> discovery_fact_diagnostic_metadata_list;         // list of data used to construct discovery_config for diagnostic facts discovery (like IP address)
-
+extern std::queue<pending_config_op> pending_ops;                                                      // queue used to record incoming requests to setter topics for later processing
 
 // *** Must Implement ***
 
@@ -110,15 +119,18 @@ discovery_config getDiscoveryMessage(discovery_fact_diagnostic_metadata disc_met
 
 void messageReceived(String &topic, String &payload);                                                   // handler for each subscribed topic
 
+
 // Provided in library
 // Connectivity and basic operations
 void initMQTTClient(const IPAddress broker, int port, const char *lwt_topic); 
 bool connectMQTTBroker(const char *client_id, const char *username, const char *password);
 void indicateMQTTProblem(byte return_code);
-void publish(String &topic, String &payload);
+void publish(const String &topic, const String &payload);
 void publishOnline(const char* availability_topic);
 bool subscribeTopics(std::vector<std::string> topicVector);
+bool subscribeTopic(std::string topic);
 int publishDiscoveryMessages();                                                                         // build discovery message - step 2 of 4
+std::vector<std::string> getAllSubscriptionTopics(std::string device_id);                               // return list of topics to be subscribed to 
 void purgeDiscoveryMetadata();
 
 // Topic builders
