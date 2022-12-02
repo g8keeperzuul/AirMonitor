@@ -630,10 +630,13 @@ void setup()
   // no longer need discovery metadata, so purge it from memory
   //purgeDiscoveryMetadata();
 
-  // Publish availability online message (just once after all discovery messages have been successfully published)
+  // since the loop() won't publish until the refresh rate has been triggered,
+  // begin with an immediate publication before going into loop() (since refresh
+  // rate could be 1 hour).
   publishOnline(AVAILABILITY_TOPIC.c_str());
+  publishSensorData();    
   publishDiagnosticData();
-  publishConfigData();  
+  publishConfigData();
 }
 
 unsigned long lastMillis = 0;
@@ -645,9 +648,8 @@ void loop()
   if (millis() - lastMillis > refresh_rate) {   
     lastMillis = millis();
     
-    publishSensorData();
-
     publishOnline(AVAILABILITY_TOPIC.c_str());
+    publishSensorData();    
     publishDiagnosticData();
     publishConfigData();
   }
