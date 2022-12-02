@@ -18,6 +18,8 @@ https://www.adafruit.com/product/3010
 WiFiClient wificlient;
 MQTTClient mqttclient(768); // default is 128 bytes;  https://github.com/256dpi/arduino-mqtt#notes
 
+unsigned long refresh_rate = 30000; // 5 minutes; frequency of sensor updates in milliseconds
+
 /*
   Since the fully constructed list of discovery_config (topics and payloads) consumes considerable RAM, reduce it to just the facts.
   Generate each discovery_config one at a time at the point of publishing the message in order to conserve RAM.
@@ -92,7 +94,7 @@ std::vector<discovery_metadata> getAllDiscoveryMessagesMetadata(){
 
 // build discovery config/control message - step 1 of 4
 std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
-  discovery_config_metadata tempoffset, altoffset/*, useambpres, co2ref, refrate*/;
+  discovery_config_metadata tempoffset, altoffset, co2ref, useambpres, presoffset, refrate;
 
   tempoffset.device_type = "number";
   tempoffset.control_name = "temperature_offset";
@@ -102,11 +104,20 @@ std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
   //tempoffset.set_topic = if not set, it will be generated
   //tempoffset.get_topic = if not set, it will be generated
 
-  // useambpres.device_type = "switch";
-  // useambpres.control_name = "use_ambient_pressure";
-  // useambpres.custom_settings = "";
-  // useambpres.icon = "mdi:cog-sync";
-  // useambpres.unit = "mPa";
+  // pressure offset is deactivated by setting to 0, but allowable range is 700-1200
+  // so use a switch to turn off (setting to 0)
+
+  useambpres.device_type = "switch";
+  useambpres.control_name = "use_pressure_offset";
+  useambpres.custom_settings = "";
+  useambpres.icon = "mdi:toggle-switch";
+  useambpres.unit = "";
+
+  presoffset.device_type = "number";
+  presoffset.control_name = "pressure_offset";
+  presoffset.custom_settings = "\"min\": 700, \"max\": 1200, \"step\": 10, \"initial\": 950";
+  presoffset.icon = "mdi:knob";
+  presoffset.unit = "hPa"; // equivalent to mBar  
 
   altoffset.device_type = "number";
   altoffset.control_name = "altitude_offset";
@@ -114,19 +125,19 @@ std::vector<discovery_config_metadata> getAllDiscoveryConfigMessagesMetadata(){
   altoffset.icon = "mdi:image-filter-hdr";
   altoffset.unit = "meters";
 
-  // co2ref.device_type = "number";
-  // co2ref.control_name = "co2_reference";
-  // co2ref.custom_settings = "\"min\": 400, \"max\": 2000, \"step\": 1, \"initial\": 900";
-  // co2ref.icon = "mdi:molecule-co2";
-  // co2ref.unit = "ppm";    
+  co2ref.device_type = "number";
+  co2ref.control_name = "co2_reference";
+  co2ref.custom_settings = "\"min\": 400, \"max\": 2000, \"step\": 1, \"initial\": 900";
+  co2ref.icon = "mdi:molecule-co2";
+  co2ref.unit = "ppm";    
 
-  // refrate.device_type = "number";
-  // refrate.control_name = "refreshrate";
-  // refrate.custom_settings = "\"min\": 1, \"max\": 60, \"step\": 1";
-  // refrate.icon = "mdi:refresh-circle";
-  // refrate.unit = "minutes";
+  refrate.device_type = "number";
+  refrate.control_name = "refreshrate";
+  refrate.custom_settings = "\"min\": 1, \"max\": 60, \"step\": 1";
+  refrate.icon = "mdi:refresh-circle";
+  refrate.unit = "minutes";
 
-  std::vector<discovery_config_metadata> dcm = { tempoffset, altoffset/*, useambpres, co2ref, refrate*/ };  
+  std::vector<discovery_config_metadata> dcm = { tempoffset, altoffset, co2ref, useambpres, presoffset, refrate };  
   return dcm;
 }
 
@@ -273,6 +284,17 @@ void publishDiagnosticData(){
 \"sht40_precision\": \""+sht40.precision+"\" \
 }";
 
+/*
+  The rest are config/controls that provide their own getter topic instead of the state or diagnostic topic.
+
+homeassistant/switch/featherm0/use_pressure_offset/get
+homeassistant/number/featherm0/pressure_offset/get
+homeassistant/number/featherm0/refreshrate/get
+homeassistant/number/featherm0/temperature_offset/get
+homeassistant/number/featherm0/altitude_offset/get
+homeassistant/number/featherm0/co2_reference/get
+*/
+
   const char* payload_ch = payload.c_str();
 
   Serial.print(F("Publishing diagnostic readings: "));  
@@ -329,6 +351,111 @@ void processMessages(){
       // once processed, remove from queue
       pending_ops.pop(); // deletes from front
     }
+    else if(op.config_meta.control_name.compare("co2_reference") == 0){
+
+      Serial.print(F("SCD30 Set CO2 reference... "));
+      int co2_ref = op.value.toInt();
+      if(co2_ref < 400){ co2_ref = 400; }
+      if(co2_ref > 2000){ co2_ref = 2000; }
+      if(setCO2Reference(co2_ref)){
+        Serial.println(F("OK"));
+      }
+      else{
+        Serial.println(F("FAILED!"));
+      }
+      Serial.print("SCD30 CO2 reference = "); Serial.println(scd30.getForcedCalibrationReference());
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), String(co2_ref));
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }   
+    /*
+      use_pressure_offset switch and pressure_offset number are linked.
+      number ranges from 700-1200 - this is the pressure offset value
+      when switch is OFF, pressure offset value is 0
+
+      when changing the number, the switch will automatically be ON
+      when the switch transitions from OFF to ON, the number is set to 950
+
+      when switch is changed, what happens to number:
+      use_pressure_offset  |  pressure_offset  |  use_pressure_offset UI   |  pressure_offset UI  
+              ON           |       950         |           ON              |          950 (should reflect 950 once use_pressure_offset = ON) 
+              OFF          |         0         |           OFF             |       700-1200 (reflects last value but ignored)
+
+      when number is changed, what happens to switch:
+        pressure_offset    |use_pressure_offset|     pressure_offset UI    |  use_pressure_offset UI
+           700-1200        |        ON         |          700-1200         |          ON (no change)        
+           700-1200        |        OFF        |          700-1200         |          ON (should reflect ON once pressure_offset changed)
+
+    */
+    else if(op.config_meta.control_name.compare("use_pressure_offset") == 0){
+
+      /* Serial.print(F("SCD30 Enable pressure offset... ")); Serial.print(op.value); Serial.print(" "); */
+      if(op.value.equals("OFF")){      
+        if(configSCD30PressureOffset(0)){ // pressure_offset UI will still show last number 700-1200
+          /* Serial.println(F("OK")); */
+        }
+        else{
+          Serial.println(F("SCD30 pressure offset (0) FAILED!"));
+        }
+      }
+      else
+      {
+          // else if ON, then the value "pressure_offset" in UI and configSCD30PressureOffset() should be 950 if not already set
+          Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset());
+          if(scd30.getAmbientPressureOffset() == 0){
+            simulatePublish("pressure_offset", "950");
+          }          
+      }
+      /* Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset()); */
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), op.value);
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }     
+    else if(op.config_meta.control_name.compare("pressure_offset") == 0){
+
+      int prior_pressure_offset = scd30.getAmbientPressureOffset();
+      //Serial.println(F("SCD30 Set pressure offset... "));      
+      int pressure_offset = op.value.toInt();
+      if(pressure_offset < 700){ pressure_offset = 700; }
+      if(pressure_offset > 1200){ pressure_offset = 1200; }
+      if(configSCD30PressureOffset(pressure_offset)){ // already prints setting
+        //Serial.println(F("SCD30 pressure offset OK"));
+        // should set "use_pressure_offset" switch to ON since the pressure_offset has been actively set (but only if currently OFF)
+        if(prior_pressure_offset == 0){
+          simulatePublish("use_pressure_offset", "ON");
+        }
+      }
+      else{
+        Serial.println(F("SCD30 pressure offset FAILED!"));
+      }
+      /* Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset()); */
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), String(pressure_offset));
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }    
+    else if(op.config_meta.control_name.compare("refreshrate") == 0){
+    
+      int rr = op.value.toInt();
+      if(rr < 1){ rr = 1; }
+      if(rr > 60){ rr = 60; }
+      
+      refresh_rate = rr * 60 * 1000; // rr (minutes) --> refresh_rate (milliseconds)
+
+      // publish updated value
+      publish(op.config_meta.get_topic.c_str(), String(rr));
+
+      // once processed, remove from queue
+      pending_ops.pop(); // deletes from front
+    }        
     else{
       // operation ignored; delete from queue anyway to void endless loop
       Serial.print(F("Message ignored! : ")); Serial.println(op.config_meta.control_name.c_str());
@@ -470,7 +597,6 @@ void setup()
   publishDiagnosticData();  
 }
 
-unsigned long refresh_rate = 30000; // 5 minutes; frequency of sensor updates in milliseconds
 unsigned long lastMillis = 0;
 void loop()
 {

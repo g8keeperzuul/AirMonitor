@@ -127,6 +127,7 @@ bool connectMQTTBroker(const char *client_id, const char *username, const char *
 void indicateMQTTProblem(byte return_code);
 void publish(const String &topic, const String &payload);
 void publishOnline(const char* availability_topic);
+bool simulatePublish(const String &control_name, const String &payload);
 bool subscribeTopics(std::vector<std::string> topicVector);
 bool subscribeTopic(std::string topic);
 int publishDiscoveryMessages();                                                                         // build discovery message - step 2 of 4

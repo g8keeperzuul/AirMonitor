@@ -67,6 +67,33 @@ void publishOnline(const char* availability_topic){
     mqttclient.publish(availability_topic, "online", RETAINED, QOS_1);     
 }
 
+/*
+  Instead of actually publishing a MQTT message, insert an operation into the pending_ops queue as if
+  a message had been processed by messageReceived().
+  Control name is used instead of topic since the control_name is a required attribute of discovery_config_metadata.
+
+  Returns true if control_name match found and pending operation has been queued, false otherwise.
+*/
+bool simulatePublish(const String &control_name, const String &payload){
+  
+  bool success = false;
+  for (size_t i = 0; i < discovery_config_metadata_list.size(); i++){
+    String test_control_name = String(discovery_config_metadata_list[i].control_name.c_str());
+    if(test_control_name.equals(control_name)){
+      // the message was received on a topic that we are subscribed to AND is a config/control topic
+      pending_config_op op;
+      op.config_meta = discovery_config_metadata_list[i];
+      op.value = payload;
+
+      pending_ops.push(op);
+      success = true;
+
+      break; // exit for-loop since topic found
+    }
+  }
+  return success;
+}
+
 /**
  * @brief Subscribe to each of the provided topics (string)
  *
@@ -128,6 +155,7 @@ void messageReceived(String &topic, String &payload) {
     }
   }
 }
+
 
 std::string buildAvailabilityTopic(const std::string device_type, const std::string device_id){  
   // {HA_TOPIC_BASE}/{device_type}/{device_id}/availability --> homeassistant/sensor/esp8266thing/availability
