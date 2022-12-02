@@ -18,7 +18,7 @@ https://www.adafruit.com/product/3010
 WiFiClient wificlient;
 MQTTClient mqttclient(768); // default is 128 bytes;  https://github.com/256dpi/arduino-mqtt#notes
 
-unsigned long refresh_rate = 30000; // 5 minutes; frequency of sensor updates in milliseconds
+unsigned long refresh_rate = 60000; // 1 minutes default; frequency of sensor updates in milliseconds
 
 /*
   Since the fully constructed list of discovery_config (topics and payloads) consumes considerable RAM, reduce it to just the facts.
@@ -284,23 +284,61 @@ void publishDiagnosticData(){
 \"sht40_precision\": \""+sht40.precision+"\" \
 }";
 
-/*
-  The rest are config/controls that provide their own getter topic instead of the state or diagnostic topic.
-
-homeassistant/switch/featherm0/use_pressure_offset/get
-homeassistant/number/featherm0/pressure_offset/get
-homeassistant/number/featherm0/refreshrate/get
-homeassistant/number/featherm0/temperature_offset/get
-homeassistant/number/featherm0/altitude_offset/get
-homeassistant/number/featherm0/co2_reference/get
-*/
-
   const char* payload_ch = payload.c_str();
 
   Serial.print(F("Publishing diagnostic readings: "));  
   Serial.println(payload_ch);
 
   mqttclient.publish(DIAGNOSTIC_TOPIC.c_str(), payload_ch, NOT_RETAINED, QOS_0);   
+}
+
+/*
+  There are config/controls that provide their own getter topic instead of the state or diagnostic topic.
+  These topics will reflect the requested (via setter topic) update when a control/config change is made.
+  However, they need to be periodically refreshed to keep the Home Assistant UI up-to-date even when a control isn't changed.
+
+  homeassistant/switch/featherm0/use_pressure_offset/get
+  homeassistant/number/featherm0/pressure_offset/get
+  homeassistant/number/featherm0/refreshrate/get
+  homeassistant/number/featherm0/temperature_offset/get
+  homeassistant/number/featherm0/altitude_offset/get
+  homeassistant/number/featherm0/co2_reference/get
+*/
+void publishConfigData(){
+ for (size_t i = 0; i < discovery_config_metadata_list.size(); i++){
+    String test_control_name = String(discovery_config_metadata_list[i].control_name.c_str());
+    if(test_control_name.equals("use_pressure_offset")){
+        if(scd30.getAmbientPressureOffset() == 0){
+          publish(discovery_config_metadata_list[i].get_topic.c_str(), "OFF");
+        }
+        else{
+          publish(discovery_config_metadata_list[i].get_topic.c_str(), "ON");
+        }
+    }
+    else if(test_control_name.equals("pressure_offset")){
+        if(scd30.getAmbientPressureOffset() == 0){
+          publish(discovery_config_metadata_list[i].get_topic.c_str(), "950");
+        }
+        else{
+          publish(discovery_config_metadata_list[i].get_topic.c_str(), String(scd30.getAmbientPressureOffset()));
+        }
+    }
+    else if(test_control_name.equals("refreshrate")){
+      publish(discovery_config_metadata_list[i].get_topic.c_str(), String(refresh_rate/1000/60));
+    }
+    else if(test_control_name.equals("temperature_offset")){
+      publish(discovery_config_metadata_list[i].get_topic.c_str(), String(scd30.getTemperatureOffset()));
+    }
+    else if(test_control_name.equals("altitude_offset")){
+      publish(discovery_config_metadata_list[i].get_topic.c_str(), String(scd30.getAltitudeOffset()));
+    }    
+    else if(test_control_name.equals("co2_reference")){
+      publish(discovery_config_metadata_list[i].get_topic.c_str(), String(scd30.getForcedCalibrationReference()));
+    }
+    else{
+      Serial.print(F("WARN: Config/control state not published: ")); Serial.println(test_control_name);
+    }     
+  }
 }
 
 
@@ -594,7 +632,8 @@ void setup()
 
   // Publish availability online message (just once after all discovery messages have been successfully published)
   publishOnline(AVAILABILITY_TOPIC.c_str());
-  publishDiagnosticData();  
+  publishDiagnosticData();
+  publishConfigData();  
 }
 
 unsigned long lastMillis = 0;
@@ -610,6 +649,7 @@ void loop()
 
     publishOnline(AVAILABILITY_TOPIC.c_str());
     publishDiagnosticData();
+    publishConfigData();
   }
   assertConnectivity(); // Runs until network and broker connectivity established and all subscriptions successful
 }
