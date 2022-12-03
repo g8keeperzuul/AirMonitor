@@ -103,7 +103,7 @@ Configuration State Payload:
 "wifi_mac": "96:e6:f1:05:f0:f8",
 "sht40_heater_intensity": "Disabled", 
 "sht40_heater_duration": 0, 
-"sht40_precision": "High", 
+"sht40_precision": "High"
 }
 ```
 
