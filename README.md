@@ -1,4 +1,5 @@
-# Indoor Environmental Sensor #
+# AirMonitor #
+## Indoor Environmental Sensor ##
 
 Overview | Details
 ---|---
