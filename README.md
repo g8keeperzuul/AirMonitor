@@ -29,6 +29,8 @@ DPS310 | temperature (C), pressure (hectopascal, hPa), altitude computed
 PM2.5 | particulate matter (Particles > 0.3um, 0.5um, 1.0um, 2.5um, 5.0um, 10.0um / 0.1L air); **AQI computed**
 SCD30 | carbon dioxide (PPM direct from sensor), humidity (% RH), temperature (C)
 
+[For physical build details, see here](doc/physical_build.md).
+
 ## How the Device Publishes Sensor State ##
 
 MQTT Topic:
