@@ -10,7 +10,17 @@ This custom device connects to wifi and publishes sensor readings via MQTT at th
 
 This device will send Home Assistant compatible discovery messages via MQTT. It can be configured via special MQTT topics.
 
-![Home Assistant Device](docs/ha-device-featherm0.png)
+The software is modular and designed to be reused. It sacrifices simplicity, RAM and flash in order to minimize the amount of developer time needed to get a robust Home Assistant compliant MQTT device working. 
+[Start here](lib/mqtt-ha-helper/README.md) to learn how to use the [mqtt-ha-helper](lib/mqtt-ha-helper/mqtt-ha-helper.cpp) to provide auto-discovery for sensors.
+For providing auto-discovery for [static device diagnostics](lib/mqtt-ha-helper/Discovery_DiagnosticFact.md) as well as [measurable diagnostics](lib/mqtt-ha-helper/Discovery_MeasurableDiagnostic.md), the steps are slightly different. Finally to support interactive controls and remote configuration via MQTT, the device will need to listen on topics and provide state updates. The details on how to do so are [here](lib/mqtt-ha-helper/Discovery_Control.md).
+
+Auto-discovery for:
+* [sensors (start here)](lib/mqtt-ha-helper/README.md)
+* [diagnostic facts](lib/mqtt-ha-helper/Discovery_DiagnosticFact.md)
+* [measurable diagnostics](lib/mqtt-ha-helper/Discovery_MeasurableDiagnostic.md)
+* [controls](lib/mqtt-ha-helper/Discovery_Control.md)
+
+![Adafruit Feather M0+](doc/FeatherM0_pinout.png)
 
 Sensor | Measures...
 ---|---
@@ -23,8 +33,8 @@ SCD30 | carbon dioxide (PPM direct from sensor), humidity (% RH), temperature (C
 
 MQTT Topic:
 ```
-homeassistant/{device_type}/environmental/{device_id}/state 
-homeassistant/sensor/environmental/featherm0/state
+homeassistant/{device_type}/{device_id}/state 
+homeassistant/sensor/featherm0/state
 ```
 
 Sensor State Payload:
@@ -57,91 +67,10 @@ Sensor State Payload:
 }
 ```
 
-## How the Device Publishes Diagnostics ##
+### Sensors Discovery ###
 
-```
-homeassistant/{device_type}/{device_id}/diagnostics
-homeassistant/sensor/featherm0/diagnostics
-```
+![Sensors](doc/AirMonitor-HA-sensors.png)
 
-Configuration State Payload:
-```
-{ 
-"wifi_rssi": -42, 
-"wifi_ip": "10.0.0.130", 
-"wifi_mac": "96:e6:f1:05:f0:f8",
-"refresh_rate": 60000, 
-"dps310_computed_alt": 201.2, 
-"sht40_heater_intensity": "Disabled", 
-"sht40_heater_duration": 0, 
-"sht40_precision": "High", 
-"scd30_forced_calibration_ref": 400, 
-"scd30_self_calibration_enabled": false, 
-"scd30_ambient_pressure": 0, 
-"scd30_altitude": 200, 
-"scd30_temperature_offset": 0, 
-"scd30_measurement_interval": 25 
-}
-```
-
-### Altitude Offset ###
-
-Discovery: 
-```
-homeassistant/number/featherm0_altitude_offset/config
-```
-Altitude offset state: 
-```
-homeassistant/sensor/featherm0/altitude_offset/get
-```
-Altitude offset command: 
-```
-homeassistant/sensor/featherm0/altitude_offset/set
-```
-
-### Ambient Pressure Calibration ###
-Discovery: 
-```
-homeassistant/switch/featherm0_use_ambient_pressure/config
-```
-Use ambient pressure state: 
-```
-homeassistant/sensor/featherm0/use_ambient_pressure/get
-```
-Use ambient pressure command: 
-```
-homeassistant/sensor/featherm0/use_ambient_pressure/set
-```
-
-### Temperature Offset ###
-Discovery: 
-```
-homeassistant/number/featherm0_temperature_offset/config
-```
-Temp Offset state: 
-```
-homeassistant/sensor/featherm0/temperature_offset/get
-```
-Temp Offset command: 
-```
-homeassistant/sensor/featherm0/temperature_offset/set
-```
-
-### Refresh Rate ###
-Discovery: 
-```
-homeassistant/number/featherm0_refreshrate/config
-```
-Refresh rate state: 
-```
-homeassistant/sensor/featherm0/refreshrate/get
-```
-Refresh rate command: 
-```
-homeassistant/sensor/featherm0/refreshrate/set
-```
-
-### Environmental Sensors ###
 All of the following sensors use the common sensor state topic (see below):
 
 Sensor Discovery: 
@@ -156,7 +85,26 @@ homeassistant/sensor/featherm0/humidity/config
 homeassistant/sensor/featherm0/temperature/config
 ```
 
-Controls/Config and Diagnostics Discovery:
+## How the Device Publishes Diagnostics ##
+
+```
+homeassistant/{device_type}/{device_id}/diagnostics
+homeassistant/sensor/featherm0/diagnostics
+```
+
+Configuration State Payload:
+```
+{ 
+"wifi_rssi": -42, 
+"wifi_ip": "10.0.0.130", 
+"wifi_mac": "96:e6:f1:05:f0:f8",
+"sht40_heater_intensity": "Disabled", 
+"sht40_heater_duration": 0, 
+"sht40_precision": "High", 
+}
+```
+
+### Diagnostics Discovery ###
 ```
 homeassistant/sensor/featherm0/wifi_rssi/config
 homeassistant/sensor/featherm0/wifi_ip/config
@@ -166,8 +114,71 @@ homeassistant/sensor/featherm0/sht40_heater_duration/config
 homeassistant/sensor/featherm0/sht40_precision/config
 ```
 
-This device cannot save any configuration parameters locally, but it does read config values from *retained* MQTT topics. 
+![Diagnostics](doc/AirMonitor-HA-diagnostics.png)
 
+## How the Device Publishes Controls ##
+
+Controls/configuration must listen on topics to accept updates (setter or command topics) and reflect those changes back to the UI (getter or state topics). Unlike sensors or diagnostics, controls have a dedicated read and write topic per control that carry a single raw value such as an integer (not JSON).
+
+![Controls](doc/AirMonitor-HA-configuration.png)
+
+### Altitude Offset ###
+
+Discovery: 
+```
+homeassistant/number/featherm0_altitude_offset/config
+```
+Altitude offset state: 
+```
+homeassistant/number/featherm0/altitude_offset/get
+```
+Altitude offset command: 
+```
+homeassistant/number/featherm0/altitude_offset/set
+```
+
+### Ambient Pressure Calibration ###
+
+Discovery: 
+```
+homeassistant/switch/featherm0/use_pressure_offset/config
+```
+Use ambient pressure state: 
+```
+homeassistant/switch/featherm0/use_pressure_offset/get
+```
+Use ambient pressure command: 
+```
+homeassistant/switch/featherm0/use_pressure_offset/set
+```
+
+### Temperature Offset ###
+Discovery: 
+```
+homeassistant/number/featherm0/temperature_offset/config
+```
+Temp Offset state: 
+```
+homeassistant/number/featherm0/temperature_offset/get
+```
+Temp Offset command: 
+```
+homeassistant/number/featherm0/temperature_offset/set
+```
+
+### Refresh Rate ###
+Discovery: 
+```
+homeassistant/number/featherm0/refreshrate/config
+```
+Refresh rate state: 
+```
+homeassistant/number/featherm0/refreshrate/get
+```
+Refresh rate command: 
+```
+homeassistant/number/featherm0/refreshrate/set
+```
 
 ## Software Dependencies ##
 
@@ -180,10 +191,45 @@ SHT40 Temperature and Humidity | https://github.com/adafruit/Adafruit_SHT4X | v1
 PM2.5 Air Quality | https://github.com/adafruit/Adafruit_PM25AQI | v1.0.6
 SCD30 Carbon Dioxide | https://github.com/adafruit/Adafruit_SCD30 | v1.0.8
 
+## Home Assistant Customizations ##
 
+Update the default labels in the Home Assistant dashboard:
+```
+homeassistant:
+  customize:
+    sensor.featherm0_humidity:
+      friendly_name: Humidity
+    sensor.featherm0_temperature:
+      friendly_name: Temperature
+    sensor.featherm0_pressure:
+      friendly_name: Pressure
+    sensor.featherm0_aqi:
+      friendly_name: Air Quality Index
+    sensor.featherm0_pm1:
+      friendly_name: PM 1.0
+    sensor.featherm0_pm25:
+      friendly_name: PM 2.5
+    sensor.featherm0_pm10:
+      friendly_name: PM 10.0
+    sensor.featherm0_carbon_dioxide:
+      friendly_name: Carbon Dioxide
+    
+    number.featherm0_altitude_offset:
+      friendly_name: Altitude Offset [SCD30]
+    number.featherm0_co2_reference:
+      friendly_name: CO2 Reference [SCD30]
+    number.featherm0_pressure_offset:
+      friendly_name: Pressure Offset [SCD30]
+    switch.featherm0_use_pressure_offset:
+      friendly_name: Enable Pressure Offset [SCD30]
+    number.featherm0_refreshrate:
+      friendly_name: Refresh Rate
+    number.featherm0_temperature_offset:
+      friendly_name: Temp Offset [SCD30]
+```
 ---
 Tips:
 
-To enable serial logging, see ha-mqtt-helper.h
+To enable serial logging, see [log.h](lib/log/log.h)
 
 To customize network configuration, copy [sample-env.h](src/sample-env.h) to env.h and apply your own local wifi and MQTT broker details.
