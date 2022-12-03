@@ -3,8 +3,7 @@
 
 #include <string>
 //#include <map>
-
-#define btoa(x) ((x)?"true":"false")
+#include "log.h"
 
 #ifdef DISABLE_SERIAL_OUTPUT
 #define logRAM()
@@ -14,6 +13,7 @@
 #define logRAMlabel(x) Serial.print(x); Serial.printf(" RAM: %d bytes\n", freeMemory())
 #endif
 
+#define btoa(x) ((x)?"true":"false")
 
 //void replaceStringInline(std::string& subject, const std::string& search, const std::string& replace);
 //std::string map2json(std::map<std::string,std::string> kvp);

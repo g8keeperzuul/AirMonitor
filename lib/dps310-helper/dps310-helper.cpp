@@ -5,13 +5,13 @@
 Adafruit_DPS310 dps;
 
 bool initDPS310(){  
-  Serial.print(F("Initialize DPS310 sensor..."));
+  Sprint(F("Initialize DPS310 sensor..."));
   if(dps.begin_I2C()) {
-    Serial.println(F("OK"));
+    Sprintln(F("OK"));
     return true;
   }
   else{
-    Serial.println("Failed to find DPS310!");
+    Sprintln("Failed to find DPS310!");
     return false;
   }
   
@@ -44,14 +44,14 @@ dps310_data readDPS310(){
   if (true /*dps.temperatureAvailable()*/) {
     dps_temp->getEvent(&temp_event);
     data.temperature = temp_event.temperature;        
-    //Serial.print(F("Temperature = "));  Serial.print(temp_event.temperature);  Serial.println(" *C");
+    //Sprint(F("Temperature = "));  Sprint(temp_event.temperature);  Sprintln(" *C");
   }
 
   // Reading pressure also reads temp so don't check pressure before temp!
   if (true /*dps.pressureAvailable()*/) {
     dps_pressure->getEvent(&pressure_event);
     data.pressure = pressure_event.pressure;    
-    //Serial.print(F("Pressure = "));  Serial.print(pressure_event.pressure);  Serial.println(" hPa"); 
+    //Sprint(F("Pressure = "));  Sprint(pressure_event.pressure);  Sprintln(" hPa"); 
     data.altitude = dps.readAltitude(LOCAL_SEALEVEL_HPA);
   }  
   return data;   

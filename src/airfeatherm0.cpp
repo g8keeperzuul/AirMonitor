@@ -1,13 +1,4 @@
-//#include <Arduino.h>  appears to be automatically added by framework specified in platformio.ini
-#include <wifi-helper.h>
-#include "mqtt-ha-helper.h"
 #include "airfeatherm0.h"
-#include "env.h"
-#include "utils.h"
-#include "sht40-helper.h"
-#include "dps310-helper.h"
-#include "pm25-helper.h"
-#include "scd30-helper.h"
 
 /*
 Built for Adafruit Feather M0 with ATWINC1500 wireless module 
@@ -266,8 +257,8 @@ void publishSensorData(){
 
       const char* payload_ch = payload.c_str();
 
-      Serial.print(F("Publishing sensor readings: "));  
-      Serial.println(payload_ch);
+      Sprint(F("Publishing sensor readings: "));  
+      Sprintln(payload_ch);
       mqttclient.publish(STATE_TOPIC.c_str(), payload_ch, NOT_RETAINED, QOS_0);  
 }
 
@@ -286,8 +277,8 @@ void publishDiagnosticData(){
 
   const char* payload_ch = payload.c_str();
 
-  Serial.print(F("Publishing diagnostic readings: "));  
-  Serial.println(payload_ch);
+  Sprint(F("Publishing diagnostic readings: "));  
+  Sprintln(payload_ch);
 
   mqttclient.publish(DIAGNOSTIC_TOPIC.c_str(), payload_ch, NOT_RETAINED, QOS_0);   
 }
@@ -336,7 +327,7 @@ void publishConfigData(){
       publish(discovery_config_metadata_list[i].get_topic.c_str(), String(scd30.getForcedCalibrationReference()));
     }
     else{
-      Serial.print(F("WARN: Config/control state not published: ")); Serial.println(test_control_name);
+      Sprint(F("WARN: Config/control state not published: ")); Sprintln(test_control_name);
     }     
   }
 }
@@ -348,20 +339,20 @@ std::queue<pending_config_op> pending_ops = {};
 void processMessages(){
   while(!pending_ops.empty()){
     pending_config_op op = pending_ops.front();
-    Serial.print(F("Processing pending message : ")); Serial.println(op.config_meta.control_name.c_str());
+    Sprint(F("Processing pending message : ")); Sprintln(op.config_meta.control_name.c_str());
 
     if(op.config_meta.control_name.compare("temperature_offset") == 0){
 
-      Serial.print(F("SCD30 Set temperature offset... "));
+      Sprint(F("SCD30 Set temperature offset... "));
       int temp_offset = op.value.toInt();
       if(temp_offset < 0){ temp_offset = 0; }
       if(scd30.setTemperatureOffset(temp_offset)){
-        Serial.println(F("OK"));
+        Sprintln(F("OK"));
       }
       else{
-        Serial.println(F("FAILED!"));
+        Sprintln(F("FAILED!"));
       }
-      Serial.print("SCD30 temperature offset = "); Serial.println(scd30.getTemperatureOffset());
+      Sprint("SCD30 temperature offset = "); Sprintln(scd30.getTemperatureOffset());
 
       // publish updated value
       publish(op.config_meta.get_topic.c_str(), String(temp_offset));
@@ -371,17 +362,17 @@ void processMessages(){
     }
     else if(op.config_meta.control_name.compare("altitude_offset") == 0){
 
-      Serial.print(F("SCD30 Set altitude offset... "));
+      Sprint(F("SCD30 Set altitude offset... "));
       int alt_offset = op.value.toInt();
       if(alt_offset < -450){ alt_offset = -450; }
       if(alt_offset > 8850){ alt_offset = 8850; }
       if(scd30.setAltitudeOffset(alt_offset)){
-        Serial.println(F("OK"));
+        Sprintln(F("OK"));
       }
       else{
-        Serial.println(F("FAILED!"));
+        Sprintln(F("FAILED!"));
       }
-      Serial.print("SCD30 altitude offset = "); Serial.println(scd30.getAltitudeOffset());
+      Sprint("SCD30 altitude offset = "); Sprintln(scd30.getAltitudeOffset());
 
       // publish updated value
       publish(op.config_meta.get_topic.c_str(), String(alt_offset));
@@ -391,17 +382,17 @@ void processMessages(){
     }
     else if(op.config_meta.control_name.compare("co2_reference") == 0){
 
-      Serial.print(F("SCD30 Set CO2 reference... "));
+      Sprint(F("SCD30 Set CO2 reference... "));
       int co2_ref = op.value.toInt();
       if(co2_ref < 400){ co2_ref = 400; }
       if(co2_ref > 2000){ co2_ref = 2000; }
       if(setCO2Reference(co2_ref)){
-        Serial.println(F("OK"));
+        Sprintln(F("OK"));
       }
       else{
-        Serial.println(F("FAILED!"));
+        Sprintln(F("FAILED!"));
       }
-      Serial.print("SCD30 CO2 reference = "); Serial.println(scd30.getForcedCalibrationReference());
+      Sprint("SCD30 CO2 reference = "); Sprintln(scd30.getForcedCalibrationReference());
 
       // publish updated value
       publish(op.config_meta.get_topic.c_str(), String(co2_ref));
@@ -430,24 +421,24 @@ void processMessages(){
     */
     else if(op.config_meta.control_name.compare("use_pressure_offset") == 0){
 
-      /* Serial.print(F("SCD30 Enable pressure offset... ")); Serial.print(op.value); Serial.print(" "); */
+      /* Sprint(F("SCD30 Enable pressure offset... ")); Sprint(op.value); Sprint(" "); */
       if(op.value.equals("OFF")){      
         if(configSCD30PressureOffset(0)){ // pressure_offset UI will still show last number 700-1200
-          /* Serial.println(F("OK")); */
+          /* Sprintln(F("OK")); */
         }
         else{
-          Serial.println(F("SCD30 pressure offset (0) FAILED!"));
+          Sprintln(F("SCD30 pressure offset (0) FAILED!"));
         }
       }
       else
       {
           // else if ON, then the value "pressure_offset" in UI and configSCD30PressureOffset() should be 950 if not already set
-          Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset());
+          Sprint("SCD30 pressure offset = "); Sprintln(scd30.getAmbientPressureOffset());
           if(scd30.getAmbientPressureOffset() == 0){
             simulatePublish("pressure_offset", "950");
           }          
       }
-      /* Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset()); */
+      /* Sprint("SCD30 pressure offset = "); Sprintln(scd30.getAmbientPressureOffset()); */
 
       // publish updated value
       publish(op.config_meta.get_topic.c_str(), op.value);
@@ -458,21 +449,21 @@ void processMessages(){
     else if(op.config_meta.control_name.compare("pressure_offset") == 0){
 
       int prior_pressure_offset = scd30.getAmbientPressureOffset();
-      //Serial.println(F("SCD30 Set pressure offset... "));      
+      //Sprintln(F("SCD30 Set pressure offset... "));      
       int pressure_offset = op.value.toInt();
       if(pressure_offset < 700){ pressure_offset = 700; }
       if(pressure_offset > 1200){ pressure_offset = 1200; }
       if(configSCD30PressureOffset(pressure_offset)){ // already prints setting
-        //Serial.println(F("SCD30 pressure offset OK"));
+        //Sprintln(F("SCD30 pressure offset OK"));
         // should set "use_pressure_offset" switch to ON since the pressure_offset has been actively set (but only if currently OFF)
         if(prior_pressure_offset == 0){
           simulatePublish("use_pressure_offset", "ON");
         }
       }
       else{
-        Serial.println(F("SCD30 pressure offset FAILED!"));
+        Sprintln(F("SCD30 pressure offset FAILED!"));
       }
-      /* Serial.print("SCD30 pressure offset = "); Serial.println(scd30.getAmbientPressureOffset()); */
+      /* Sprint("SCD30 pressure offset = "); Sprintln(scd30.getAmbientPressureOffset()); */
 
       // publish updated value
       publish(op.config_meta.get_topic.c_str(), String(pressure_offset));
@@ -496,7 +487,7 @@ void processMessages(){
     }        
     else{
       // operation ignored; delete from queue anyway to void endless loop
-      Serial.print(F("Message ignored! : ")); Serial.println(op.config_meta.control_name.c_str());
+      Sprint(F("Message ignored! : ")); Sprintln(op.config_meta.control_name.c_str());
       pending_ops.pop();
     }
   }
@@ -504,11 +495,11 @@ void processMessages(){
 }
 
 void indicateWifiProblem(byte return_code){
-  Serial.println(F("ERROR: Wifi problem!"));
+  Sprintln(F("ERROR: Wifi problem!"));
 }
 
 void indicateMQTTProblem(byte return_code){
-  Serial.println(F("ERROR: MQTT problem!"));
+  Sprintln(F("ERROR: MQTT problem!"));
 }
 
 
@@ -556,7 +547,7 @@ void assertConnectivity(){
 }
 
 void reset() {
-  Serial.println(F("RESET!"));
+  Sprintln(F("RESET!"));
   //initiateReset(1); // Reset.h
 
   // Cortex-M0+
@@ -565,13 +556,13 @@ void reset() {
 
 bool initSensors(){
   bool sht40_ok = initSHT40();  
-  Serial.println(F("************************************"));
+  Sprintln(F("************************************"));
   bool dsp310_ok = initDPS310();
-  Serial.println(F("************************************"));
+  Sprintln(F("************************************"));
   bool pm25_ok = initPM25AQI();
-  Serial.println(F("************************************"));
+  Sprintln(F("************************************"));
   bool scd30_ok = initSCD30();
-  Serial.println(F("************************************"));
+  Sprintln(F("************************************"));
 
   return (sht40_ok && dsp310_ok && pm25_ok && scd30_ok);
 }
@@ -587,12 +578,12 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LED_OFF); // initialize to off
 
-  Serial.println(DEVICE_NAME);
-  Serial.println(F("************************************"));
+  Sprintln(DEVICE_NAME);
+  Sprintln(F("************************************"));
 
   if(!initSensors()){
     // one or more sensors failed to initialize
-    Serial.println(F("Failed to initialize all sensors!"));
+    Sprintln(F("Failed to initialize all sensors!"));
     delay(RESET_DELAY);
     reset();
   }
@@ -610,12 +601,12 @@ void setup()
   }
   else{
     // Wifi cannot be initialized
-    Serial.println(F("Failed to initialize wifi!"));
+    Sprintln(F("Failed to initialize wifi!"));
     delay(RESET_DELAY);
     reset();
   }
 
-  Serial.println(F("************************************"));
+  Sprintln(F("************************************"));
 
 
   

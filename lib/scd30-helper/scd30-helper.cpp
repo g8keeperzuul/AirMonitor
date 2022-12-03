@@ -21,41 +21,41 @@ Adafruit_SCD30 scd30;
   Their configuration is stored in non-volatile memory on the SCD30 sensor.
 */
 bool initSCD30(){
-  Serial.print(F("Initialize SCD30 sensor... "));
+  Sprint(F("Initialize SCD30 sensor... "));
   if(scd30.begin()) {
-    Serial.println(F("OK"));
+    Sprintln(F("OK"));
     return true;
   }
   else{
-    Serial.println("Failed to find SCD30!");
+    Sprintln("Failed to find SCD30!");
     return false;
   }  
 
   /*** Adjust the rate at which measurements are taken, from 2-1800 seconds */
   scd30.setMeasurementInterval(25);
-  Serial.print(F("SCD30 measurement interval (seconds): "));
-  Serial.println(scd30.getMeasurementInterval());  
+  Sprint(F("SCD30 measurement interval (seconds): "));
+  Sprintln(scd30.getMeasurementInterval());  
 
   /*** Set a temperature offset in hundredths of a degree celcius.
    * Offset value stored in non-volatile memory of SCD30.
    * It is also a retained value on the MQTT topic when initially set (homeassistant/sensor/environmental/featherm0/temperature_offset/get)
    * scd30.setTemperatureOffset(1984) == 19.84 degrees celcius
    */
-  Serial.print(F("SCD30 temperature offset (C): "));
-  Serial.println((float)scd30.getTemperatureOffset()/100.0);    
+  Sprint(F("SCD30 temperature offset (C): "));
+  Sprintln((float)scd30.getTemperatureOffset()/100.0);    
 
   /*** Set an altitude offset in meters above sea level.
    * Offset value stored in non-volatile memory of SCD30.
    * Setting an altitude offset will override any pressure offset.
    */
-  Serial.print(F("SCD30 altitude offset (meters): "));
-  Serial.println(scd30.getAltitudeOffset());  
+  Sprint(F("SCD30 altitude offset (meters): "));
+  Sprintln(scd30.getAltitudeOffset());  
 
   /***
     Ambient pressure offset takes precedence over altitude offset as long as pressure offset != 0
   */
-  Serial.print(F("SCD30 ambient pressure offset (mBar/hPa): "));
-  Serial.println(scd30.getAmbientPressureOffset());  // can only be set with continuous measurement method 
+  Sprint(F("SCD30 ambient pressure offset (mBar/hPa): "));
+  Sprintln(scd30.getAmbientPressureOffset());  // can only be set with continuous measurement method 
 
   /*** Enable or disable automatic self calibration (ASC).
    * Parameter stored in non-volatile memory of SCD30.
@@ -69,11 +69,11 @@ bool initSCD30(){
    */
   scd30.selfCalibrationEnabled(false);
 
-  Serial.print(F("SCD30 automatic self calibration (ASC): "));
+  Sprint(F("SCD30 automatic self calibration (ASC): "));
   if (scd30.selfCalibrationEnabled()) {
-    Serial.println(F("ENABLED"));
+    Sprintln(F("ENABLED"));
   } else {
-    Serial.println(F("DISABLED"));
+    Sprintln(F("DISABLED"));
   }  
 
   /***
@@ -82,8 +82,8 @@ bool initSCD30(){
     Even though the FCR appears to be reset, the new baseline is indeed remembered by the sensor and repeated recalibration is unnecessary.
     The last FCR value is retained in the MQTT topic (homeassistant/sensor/environmental/featherm0/co2_reference/get) and does survive device resets.
   */
-  Serial.print(F("SCD30 forced calibration reference (baseline CO2 ppm): "));
-  Serial.println(scd30.getForcedCalibrationReference());
+  Sprint(F("SCD30 forced calibration reference (baseline CO2 ppm): "));
+  Sprintln(scd30.getForcedCalibrationReference());
 }
 
 /**
@@ -106,12 +106,12 @@ bool initSCD30(){
 */    
 bool configSCD30PressureOffset(uint16_t ambient_pressure_mbar){
   if(!scd30.startContinuousMeasurement(ambient_pressure_mbar)){ // 0 if the command was successful else an error code
-      Serial.print(F("Failed to set SCD30 ambient pressure offset to (mBar/hPa): ")); Serial.println(ambient_pressure_mbar);
+      Sprint(F("Failed to set SCD30 ambient pressure offset to (mBar/hPa): ")); Sprintln(ambient_pressure_mbar);
       return false;
   }
 
-  Serial.print(F("SCD30 ambient pressure offset (mBar/hPa): "));
-  Serial.println(scd30.getAmbientPressureOffset());  // can only be set with continuous measurement method 
+  Sprint(F("SCD30 ambient pressure offset (mBar/hPa): "));
+  Sprintln(scd30.getAmbientPressureOffset());  // can only be set with continuous measurement method 
   return true;
 }
 
@@ -119,17 +119,17 @@ bool configSCD30PressureOffset(uint16_t ambient_pressure_mbar){
   Sets altitude offset.
 */
 bool setAltitudeOffset(long alt_offset){
-  Serial.print(F("Calibrating altitude offset... "));
+  Sprint(F("Calibrating altitude offset... "));
 
   bool alt_offset_success = scd30.setAltitudeOffset(alt_offset); // setting survives restarts
   if(alt_offset_success){
-    Serial.print(F("OK"));           
+    Sprint(F("OK"));           
   }
   else{
-    Serial.print(F("FAILED!"));    
+    Sprint(F("FAILED!"));    
   }
-  Serial.print(F("SCD30 altitude offset (meters): "));
-  Serial.println(scd30.getAltitudeOffset());
+  Sprint(F("SCD30 altitude offset (meters): "));
+  Sprintln(scd30.getAltitudeOffset());
   return alt_offset_success;
 }
 
@@ -137,16 +137,16 @@ bool setAltitudeOffset(long alt_offset){
   Sets temperature offset. 
 */
 bool setTemperatureOffset(int temp_offset){
-    Serial.print(F("Calibrating temperature offset... "));
+    Sprint(F("Calibrating temperature offset... "));
     bool temp_offset_success = scd30.setTemperatureOffset(temp_offset); // setting survives restarts
     if(temp_offset_success){
-        Serial.println(F("OK"));        
+        Sprintln(F("OK"));        
     }
     else{
-        Serial.println(F("FAILED!"));
+        Sprintln(F("FAILED!"));
     }
-    Serial.print(F("SCD30 temperature offset (one-hundredths of a degree celcius): "));
-    Serial.println(scd30.getTemperatureOffset());      
+    Sprint(F("SCD30 temperature offset (one-hundredths of a degree celcius): "));
+    Sprintln(scd30.getTemperatureOffset());      
 
     return temp_offset_success;  
 }
@@ -157,17 +157,17 @@ bool setTemperatureOffset(int temp_offset){
   Otherwise move to outdoor air and set reference to about 430 ppm.
 */
 bool setCO2Reference(int co2_ref){
-    Serial.println(F("Calibrating CO2 baseline... "));
+    Sprintln(F("Calibrating CO2 baseline... "));
 
     bool co2ref_success = scd30.forceRecalibrationWithReference(co2_ref); // setting survives restarts
     if(co2ref_success){
-        Serial.println(F("OK")); 
+        Sprintln(F("OK")); 
     }
     else{
-        Serial.println(F("FAILED!"));  
+        Sprintln(F("FAILED!"));  
     }
-    Serial.print(F("SCD30 forced CO2 calibration reference (ppm): "));
-    Serial.println(scd30.getForcedCalibrationReference());    
+    Sprint(F("SCD30 forced CO2 calibration reference (ppm): "));
+    Sprintln(scd30.getForcedCalibrationReference());    
     return co2ref_success;   
 }
 
@@ -180,22 +180,22 @@ scd30_data readSCD30(){
 
   if (scd30.dataReady()){
       if (!scd30.read()){ 
-        Serial.println("Error reading SCD30 sensor data"); 
+        Sprintln("Error reading SCD30 sensor data"); 
         return data; 
       }
 
-      // Serial.print("Temperature: ");
-      // Serial.print(scd30.temperature);
-      // Serial.println(" degrees C");
+      // Sprint("Temperature: ");
+      // Sprint(scd30.temperature);
+      // Sprintln(" degrees C");
       
-      // Serial.print("Relative Humidity: ");
-      // Serial.print(scd30.relative_humidity);
-      // Serial.println(" %");
+      // Sprint("Relative Humidity: ");
+      // Sprint(scd30.relative_humidity);
+      // Sprintln(" %");
       
-      // Serial.print("CO2: ");
-      // Serial.print(scd30.CO2, 3);
-      // Serial.println(" ppm");
-      // Serial.println("");
+      // Sprint("CO2: ");
+      // Sprint(scd30.CO2, 3);
+      // Sprintln(" ppm");
+      // Sprintln("");
 
       data.CO2 = scd30.CO2;
       data.temperature = scd30.temperature;
@@ -204,7 +204,7 @@ scd30_data readSCD30(){
       return data;
   } 
   else {
-    Serial.println("SCD30 sensor data not ready");    
+    Sprintln("SCD30 sensor data not ready");    
     return data;
   }    
 }

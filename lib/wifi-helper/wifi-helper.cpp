@@ -5,16 +5,16 @@
 std::string cached_mac;
 
 bool initWifi() {
-  Serial.print(F("Initalize wifi..."));
+  Sprint(F("Initalize wifi..."));
   
   WiFi.setPins(WINC_CS, WINC_IRQ, WINC_RST, WINC_EN);
 
   // check for the presence of the breakout
   if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println(F("WINC1500 not present. Abort"));
+    Sprintln(F("WINC1500 not present. Abort"));
     return false;
   }
-  Serial.println(F("ATWINC OK"));  
+  Sprintln(F("ATWINC OK"));  
     
   return true;
 }
@@ -44,9 +44,9 @@ bool connectWifi(const char *ssid, const char *passphrase)
       WL_DISCONNECTED     = 6
   */   
 
-  Serial.print(F("Attempting to connect to wireless network \""));
-  Serial.print(ssid);
-  Serial.print("\"... ");
+  Sprint(F("Attempting to connect to wireless network \""));
+  Sprint(ssid);
+  Sprint("\"... ");
 
   // WiFI.begin([ssid], [passkey]) initiates a WiFI connection
   // to the stated [ssid], using the [passkey] as a WPA, WPA2,
@@ -66,11 +66,11 @@ bool connectWifi(const char *ssid, const char *passphrase)
     duration = duration + 100;
   }
   if(WiFi.status() == WL_CONNECTED){
-    Serial.println(F("Connected!"));
+    Sprintln(F("Connected!"));
     return true;
   }
   else{
-    Serial.println(F("Failed!"));
+    Sprintln(F("Failed!"));
     return false;
   }
   
@@ -103,53 +103,53 @@ bool assertNetworkConnectivity(const char *ssid, const char *passphrase){
 
 void printNetworkDetails()
 {
-  Serial.println("");
-  Serial.println("Network details:");  
+  Sprintln("");
+  Sprintln("Network details:");  
 
-  Serial.print(F("WiFi firmware version: "));
-  Serial.println(WiFi.firmwareVersion());  
+  Sprint(F("WiFi firmware version: "));
+  Sprintln(WiFi.firmwareVersion());  
 
   // SSID of the network you're attached to
-  Serial.print(F("SSID: "));
-  Serial.println(WiFi.SSID()); // String
+  Sprint(F("SSID: "));
+  Sprintln(WiFi.SSID()); // String
 
-  Serial.print(F("IP: "));
+  Sprint(F("IP: "));
   std::string ip = getIP();
-  Serial.println(ip.c_str()); 
+  Sprintln(ip.c_str()); 
   
-  Serial.print(F("Subnet mask: "));
+  Sprint(F("Subnet mask: "));
   std::string mask = uint32_to_ip(WiFi.subnetMask());
-  Serial.println(mask.c_str());   
+  Sprintln(mask.c_str());   
   
-  Serial.print(F("Gateway IP: "));
+  Sprint(F("Gateway IP: "));
   std::string gw = uint32_to_ip(WiFi.gatewayIP());
-  Serial.println(gw.c_str());   
+  Sprintln(gw.c_str());   
     
-  Serial.print(F("MAC: "));
+  Sprint(F("MAC: "));
   const std::string mac = getMAC();
-  Serial.println(mac.c_str());
+  Sprintln(mac.c_str());
 
   // MAC address of the router you're attached to
-  Serial.print("BSSID: ");
+  Sprint("BSSID: ");
   uint8_t bssid_buf[6];
   WiFi.BSSID(bssid_buf);
   const std::string bssid_string = uint8_to_hex_string(bssid_buf, 6);
-  Serial.println(bssid_string.c_str());
+  Sprintln(bssid_string.c_str());
 
   // Received signal strength
-  Serial.print(F("RSSI: "));
-  Serial.println(WiFi.RSSI()); // int8_t  
+  Sprint(F("RSSI: "));
+  Sprintln(WiFi.RSSI()); // int8_t  
 
   // Wifi password
-  // Serial.print("PSK: ");
-  // Serial.println(WiFi.psk()); // String
+  // Sprint("PSK: ");
+  // Sprintln(WiFi.psk()); // String
 
   // Encryption type:
   byte encryption = WiFi.encryptionType();
-  Serial.print("Encryption Type: ");
-  Serial.println(encryption, HEX);
+  Sprint("Encryption Type: ");
+  SprintlnHEX(encryption);
 
-  Serial.println("");
+  Sprintln("");
 }
 
 

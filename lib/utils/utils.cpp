@@ -10,21 +10,6 @@
 #include <iomanip>
 #include "utils.h"
 
-
-#ifdef DISABLE_SERIAL_OUTPUT
-// disable Serial output
-// https://arduino.stackexchange.com/questions/9857/can-i-make-the-arduino-ignore-serial-print
-#define Serial SomeOtherwiseUnusedName
-static class {
-public:
-    void begin(...) {}
-    void print(...) {}
-    void println(...) {}
-    void printf(...) {}
-} Serial;
-#endif
-
-
 /*
 // https://stackoverflow.com/questions/4643512/replace-substring-with-another-substring-c
 void replaceStringInline(std::string& subject, const std::string& search, const std::string& replace) {

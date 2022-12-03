@@ -2,6 +2,8 @@
 #define DPS310_HELPER_H
 
 #include <Adafruit_DPS310.h>
+#include "log.h"
+
 
 // Sea level equivalent ranges from 1013 to 1018 at this location and is seasonal and regional; annual average is 1015.95
 // https://www.worldweatheronline.com/markham-weather-averages/ontario/ca.aspx

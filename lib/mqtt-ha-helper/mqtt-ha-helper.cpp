@@ -1,12 +1,18 @@
 #include "mqtt-ha-helper.h"
 
+/*
+  This library is actually independent from wifi-helper.
+  For that reason it is not possible to implement a universal MQTT broker + network connectivity
+  method in this library. 
+*/
+
 void initMQTTClient(const IPAddress broker, int port, const char *lwt_topic)
 {
-  Serial.print(F("Initalize MQTT client for broker:"));
-  Serial.print(broker); // IPAddress
-  Serial.print(":");
-  Serial.print(port); // int
-  Serial.print("... ");
+  Sprint(F("Initalize MQTT client for broker:"));
+  Sprint(broker); // IPAddress
+  Sprint(":");
+  Sprint(port); // int
+  Sprint("... ");
 
   // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported
   // by Arduino. You need to set the IP address directly.
@@ -18,7 +24,7 @@ void initMQTTClient(const IPAddress broker, int port, const char *lwt_topic)
 
   mqttclient.setWill(lwt_topic, "offline", RETAINED, QOS_1);
 
-  Serial.println(F("Done"));
+  Sprintln(F("Done"));
 }
 
 // Returns TRUE if connected to MQTT broker
@@ -26,13 +32,13 @@ bool connectMQTTBroker(const char *client_id, const char *username, const char *
 {  
   if(!mqttclient.connected())
   {
-    Serial.print(F("\nAttempting to connect to MQTT broker... "));
+    Sprint(F("\nAttempting to connect to MQTT broker... "));
     if(mqttclient.connect(client_id, username, password)){
-        Serial.println(F("Connected!"));
+        Sprintln(F("Connected!"));
         return true;
     }
     else{
-        Serial.println(F("Failed!"));
+        Sprintln(F("Failed!"));
         return false;
     }
   }
@@ -57,13 +63,13 @@ bool connectMQTTBroker(const char *client_id, const char *username, const char *
 
 
 void publish(const String &topic, const String &payload){
-    Serial.println("\nPublishing message: " + topic + " : " + payload);
+    Sprintln("\nPublishing message: " + topic + " : " + payload);
     //const char* payload_ch = payload.c_str();
     mqttclient.publish(topic, payload, NOT_RETAINED, QOS_0);
 }
 
 void publishOnline(const char* availability_topic){        
-    Serial.print("\nPublishing message: "); Serial.print(availability_topic); Serial.println(" : online");
+    Sprint("\nPublishing message: "); Sprint(availability_topic); Sprintln(" : online");
     mqttclient.publish(availability_topic, "online", RETAINED, QOS_1);     
 }
 
@@ -116,13 +122,13 @@ bool subscribeTopics(std::vector<std::string> topicVector)
 }
 
 bool subscribeTopic(std::string topic){  
-  Serial.print(F("Subscribe to topic ")); Serial.print(topic.c_str()); Serial.print("... ");
+  Sprint(F("Subscribe to topic ")); Sprint(topic.c_str()); Sprint("... ");
   bool success = mqttclient.subscribe(topic.c_str());
   if(success){
-    Serial.println(F("OK"));    
+    Sprintln(F("OK"));    
   }
   else{
-    Serial.println(F("FAILED!"));
+    Sprintln(F("FAILED!"));
   }
   return success;
 }
@@ -133,7 +139,7 @@ bool subscribeTopic(std::string topic){
  * Main program must first() and pop() message requests from queue and process.
 */
 void messageReceived(String &topic, String &payload) {
-  Serial.println("\nIncoming message: " + topic + " : " + payload);
+  Sprintln("\nIncoming message: " + topic + " : " + payload);
 
   // Note: Do not use the mqttclient in the callback to publish, subscribe or
   // unsubscribe as it may cause deadlocks when other things arrive while
@@ -382,15 +388,15 @@ int publishDiscoveryMessages()
       // generate topic and payload one at a time
       discovery_config disc = getDiscoveryMessage(discovery_metadata_list[i]); // build discovery message - step 3
       
-      Serial.print(F("\nPublishing discovery message to "));
-      Serial.print(disc.topic.c_str());
+      Sprint(F("\nPublishing discovery message to "));
+      Sprint(disc.topic.c_str());
       if (!mqttclient.publish(disc.topic.c_str(), disc.payload.c_str(), RETAINED, QOS_1))
       { // should return true if successfully sent and since QoS=1 ACK should also be received
-        Serial.println(F("... Failed"));
+        Sprintln(F("... Failed"));
       }
       else
       {
-        Serial.println(F("... OK"));
+        Sprintln(F("... OK"));
         discovery_metadata_list[i].published = true;
         pending_discovery_count--; // just published
 
@@ -409,15 +415,15 @@ int publishDiscoveryMessages()
       // generate topic and payload one at a time
       discovery_config disc = getDiscoveryMessage(discovery_config_metadata_list[i]); // build discovery configuration/control message - step 3
       
-      Serial.print(F("\nPublishing configuration/control discovery message to "));
-      Serial.print(disc.topic.c_str());
+      Sprint(F("\nPublishing configuration/control discovery message to "));
+      Sprint(disc.topic.c_str());
       if (!mqttclient.publish(disc.topic.c_str(), disc.payload.c_str(), RETAINED, QOS_1))
       { // should return true if successfully sent and since QoS=1 ACK should also be received
-        Serial.println(F("... Failed"));
+        Sprintln(F("... Failed"));
       }
       else
       {
-        Serial.println(F("... OK"));
+        Sprintln(F("... OK"));
         discovery_config_metadata_list[i].published = true;
         pending_discovery_count--; // just published 
 
@@ -436,15 +442,15 @@ int publishDiscoveryMessages()
       // generate topic and payload one at a time
       discovery_config disc = getDiscoveryMessage(discovery_measured_diagnostic_metadata_list[i]); // build discovery measured diagnostic message - step 3
       
-      Serial.print(F("\nPublishing measured diagnostic discovery message to "));
-      Serial.print(disc.topic.c_str());
+      Sprint(F("\nPublishing measured diagnostic discovery message to "));
+      Sprint(disc.topic.c_str());
       if (!mqttclient.publish(disc.topic.c_str(), disc.payload.c_str(), RETAINED, QOS_1))
       { // should return true if successfully sent and since QoS=1 ACK should also be received
-        Serial.println(F("... Failed"));
+        Sprintln(F("... Failed"));
       }
       else
       {
-        Serial.println(F("... OK"));
+        Sprintln(F("... OK"));
         discovery_measured_diagnostic_metadata_list[i].published = true;
         pending_discovery_count--; // just published 
 
@@ -463,15 +469,15 @@ int publishDiscoveryMessages()
       // generate topic and payload one at a time
       discovery_config disc = getDiscoveryMessage(discovery_fact_diagnostic_metadata_list[i]); // build discovery diagnostic fact message - step 3
       
-      Serial.print(F("\nPublishing diagnostic fact discovery message to "));
-      Serial.print(disc.topic.c_str());
+      Sprint(F("\nPublishing diagnostic fact discovery message to "));
+      Sprint(disc.topic.c_str());
       if (!mqttclient.publish(disc.topic.c_str(), disc.payload.c_str(), RETAINED, QOS_1))
       { // should return true if successfully sent and since QoS=1 ACK should also be received
-        Serial.println(F("... Failed"));
+        Sprintln(F("... Failed"));
       }
       else
       {
-        Serial.println(F("... OK"));
+        Sprintln(F("... OK"));
         discovery_fact_diagnostic_metadata_list[i].published = true;
         pending_discovery_count--; // just published 
 
@@ -500,14 +506,14 @@ std::vector<std::string> getAllSubscriptionTopics(std::string device_id){
     // if a custom setter topic is not provided, create one with the default naming convention
     if(discovery_config_metadata_list[i].set_topic.empty()){
       discovery_config_metadata_list[i].set_topic = buildSetterTopic(discovery_config_metadata_list[i].device_type, device_id, discovery_config_metadata_list[i].control_name);
-      Serial.print("Initializing setter topic for "); Serial.print(discovery_config_metadata_list[i].control_name.c_str()); Serial.print(" : "); Serial.println(discovery_config_metadata_list[i].set_topic.c_str());
+      Sprint("Initializing setter topic for "); Sprint(discovery_config_metadata_list[i].control_name.c_str()); Sprint(" : "); Sprintln(discovery_config_metadata_list[i].set_topic.c_str());
     }
     // if a custom getter topic is not provided, create one with the default naming convention
     if(discovery_config_metadata_list[i].get_topic.empty()){
       discovery_config_metadata_list[i].get_topic = buildGetterTopic(discovery_config_metadata_list[i].device_type, device_id, discovery_config_metadata_list[i].control_name);      
-      Serial.print("Initializing getter topic for "); Serial.print(discovery_config_metadata_list[i].control_name.c_str()); Serial.print(" : "); Serial.println(discovery_config_metadata_list[i].get_topic.c_str());
+      Sprint("Initializing getter topic for "); Sprint(discovery_config_metadata_list[i].control_name.c_str()); Sprint(" : "); Sprintln(discovery_config_metadata_list[i].get_topic.c_str());
     }    
-    Serial.print("Adding subscription topic: "); Serial.println(discovery_config_metadata_list[i].set_topic.c_str());
+    Sprint("Adding subscription topic: "); Sprintln(discovery_config_metadata_list[i].set_topic.c_str());
     topics.push_back(discovery_config_metadata_list[i].set_topic);
   }  
   return topics;

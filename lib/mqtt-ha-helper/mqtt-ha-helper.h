@@ -6,6 +6,7 @@
 #include <vector>
 #include <queue>
 #include <string>
+#include "log.h"
 
 // Not used by this library, but meant to be used by the users of this library between calls to connectMQTTBroker()
 #define MQTT_ATTEMPT_COOLDOWN 10000 // milliseconds between MQTT broker connection attempts

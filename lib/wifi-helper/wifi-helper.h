@@ -5,7 +5,7 @@
 #include <SPI.h>  // specific to WiFi101
 #include <WiFi101.h>
 #include "utils.h"
-
+#include "log.h"
 
 #define WINC_CS   8
 #define WINC_IRQ  7

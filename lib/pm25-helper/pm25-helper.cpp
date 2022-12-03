@@ -5,15 +5,15 @@
 Adafruit_PM25AQI aqi;
 
 bool initPM25AQI(){
-    Serial.print(F("Initialize PM25 AQI sensor... "));
+    Sprint(F("Initialize PM25 AQI sensor... "));
     aqi = Adafruit_PM25AQI();
     if(aqi.begin_I2C()) {      // connect to the sensor over I2C
         // no configuration necessary
-        Serial.println(F("OK"));
+        Sprintln(F("OK"));
         return true;
     }
     else{
-        Serial.println("Failed to find PM 2.5 sensor!");
+        Sprintln("Failed to find PM 2.5 sensor!");
         return false;
     }
 }
@@ -26,31 +26,31 @@ PM25_AQI_Data readPM25AQI(){
 
   PM25_AQI_Data data;
   if (! aqi.read(&data)) {
-    Serial.println("Could not read from AQI");
+    Sprintln("Could not read from AQI");
     //delay(500);  // try again in a bit!
     return data;
   }
   /*
-  Serial.println(F("PM2.5 AQI Sensor"));
-  Serial.println(F("---------------------------------------"));
-  Serial.println(F("Concentration Units (standard)"));
-  Serial.println(F("---------------------------------------"));
-  Serial.print(F("PM 1.0: ")); Serial.print(data.pm10_standard);
-  Serial.print(F("\t\tPM 2.5: ")); Serial.print(data.pm25_standard);
-  Serial.print(F("\t\tPM 10: ")); Serial.println(data.pm100_standard);
-  Serial.println(F("Concentration Units (environmental)"));
-  Serial.println(F("---------------------------------------"));
-  Serial.print(F("PM 1.0: ")); Serial.print(data.pm10_env);
-  Serial.print(F("\t\tPM 2.5: ")); Serial.print(data.pm25_env);
-  Serial.print(F("\t\tPM 10: ")); Serial.println(data.pm100_env);
-  Serial.println(F("---------------------------------------"));
-  Serial.print(F("Particles > 0.3um / 0.1L air:")); Serial.println(data.particles_03um);
-  Serial.print(F("Particles > 0.5um / 0.1L air:")); Serial.println(data.particles_05um);
-  Serial.print(F("Particles > 1.0um / 0.1L air:")); Serial.println(data.particles_10um);
-  Serial.print(F("Particles > 2.5um / 0.1L air:")); Serial.println(data.particles_25um);
-  Serial.print(F("Particles > 5.0um / 0.1L air:")); Serial.println(data.particles_50um);
-  Serial.print(F("Particles > 10 um / 0.1L air:")); Serial.println(data.particles_100um);
-  Serial.println(F("---------------------------------------"));
+  Sprintln(F("PM2.5 AQI Sensor"));
+  Sprintln(F("---------------------------------------"));
+  Sprintln(F("Concentration Units (standard)"));
+  Sprintln(F("---------------------------------------"));
+  Sprint(F("PM 1.0: ")); Sprint(data.pm10_standard);
+  Sprint(F("\t\tPM 2.5: ")); Sprint(data.pm25_standard);
+  Sprint(F("\t\tPM 10: ")); Sprintln(data.pm100_standard);
+  Sprintln(F("Concentration Units (environmental)"));
+  Sprintln(F("---------------------------------------"));
+  Sprint(F("PM 1.0: ")); Sprint(data.pm10_env);
+  Sprint(F("\t\tPM 2.5: ")); Sprint(data.pm25_env);
+  Sprint(F("\t\tPM 10: ")); Sprintln(data.pm100_env);
+  Sprintln(F("---------------------------------------"));
+  Sprint(F("Particles > 0.3um / 0.1L air:")); Sprintln(data.particles_03um);
+  Sprint(F("Particles > 0.5um / 0.1L air:")); Sprintln(data.particles_05um);
+  Sprint(F("Particles > 1.0um / 0.1L air:")); Sprintln(data.particles_10um);
+  Sprint(F("Particles > 2.5um / 0.1L air:")); Sprintln(data.particles_25um);
+  Sprint(F("Particles > 5.0um / 0.1L air:")); Sprintln(data.particles_50um);
+  Sprint(F("Particles > 10 um / 0.1L air:")); Sprintln(data.particles_100um);
+  Sprintln(F("---------------------------------------"));
   */
   return data;
 }
@@ -102,13 +102,13 @@ uint16_t calculateAQI(uint16_t conc_i){
   }
 
   /*
-  Serial.print("conc_i = "); Serial.println(conc_i);
-  Serial.print("aqi_hi = "); Serial.println(aqi_hi);
-  Serial.print("aqi_low = "); Serial.println(aqi_low);
-  Serial.print("conc_hi = "); Serial.println(conc_hi);
-  Serial.print("conc_low = "); Serial.println(conc_low);
+  Sprint("conc_i = "); Sprintln(conc_i);
+  Sprint("aqi_hi = "); Sprintln(aqi_hi);
+  Sprint("aqi_low = "); Sprintln(aqi_low);
+  Sprint("conc_hi = "); Sprintln(conc_hi);
+  Sprint("conc_low = "); Sprintln(conc_low);
   */
   float aqi = ((aqi_hi - aqi_low)/(conc_hi - conc_low))*(conc_i - conc_low) + aqi_low;
-  //Serial.print("aqi = "); Serial.println(aqi);
+  //Sprint("aqi = "); Sprintln(aqi);
   return (uint16_t)aqi;
 }
