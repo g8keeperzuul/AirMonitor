@@ -494,12 +494,32 @@ void processMessages(){
   
 }
 
+// NOT USED
 void indicateWifiProblem(byte return_code){
   Sprintln(F("ERROR: Wifi problem!"));
+  // three "short" flashes for 0.5s each
+  int count = 0;
+  do {
+    digitalWrite(LED_BUILTIN, LED_OFF);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LED_ON);
+    delay(500);
+  } 
+  while(count < 3);  
 }
 
 void indicateMQTTProblem(byte return_code){
   Sprintln(F("ERROR: MQTT problem!"));
+
+  // three "long" flashes for 2s each
+  int count = 0;
+  do {
+    digitalWrite(LED_BUILTIN, LED_OFF);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LED_ON);
+    delay(2000);
+  } 
+  while(count < 3);
 }
 
 
@@ -573,6 +593,8 @@ void setup()
   Serial.begin(9600);
   while (!Serial)
     delay(10);     // will pause Zero, Leonardo, etc until serial console opens   
+  #else
+    delay(1000);
   #endif
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -624,10 +646,12 @@ void setup()
   // since the loop() won't publish until the refresh rate has been triggered,
   // begin with an immediate publication before going into loop() (since refresh
   // rate could be 1 hour).
+  digitalWrite(LED_BUILTIN, LED_ON);
   publishOnline(AVAILABILITY_TOPIC.c_str());
   publishSensorData();    
   publishDiagnosticData();
   publishConfigData();
+  digitalWrite(LED_BUILTIN, LED_OFF);
 }
 
 unsigned long lastMillis = 0;
@@ -639,10 +663,12 @@ void loop()
   if (millis() - lastMillis > refresh_rate) {   
     lastMillis = millis();
     
+    digitalWrite(LED_BUILTIN, LED_ON);
     publishOnline(AVAILABILITY_TOPIC.c_str());
     publishSensorData();    
     publishDiagnosticData();
     publishConfigData();
+    digitalWrite(LED_BUILTIN, LED_OFF);
   }
   assertConnectivity(); // Runs until network and broker connectivity established and all subscriptions successful
 }
