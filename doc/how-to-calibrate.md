@@ -37,7 +37,10 @@ This skewed temperature affects the accuracy of the CO2 and humidity reading. Co
 
 The temperature offset is exposed as a device configuration setting. It is specified in one hundredths of a degree.
 So to (decrease) the CO2 temperature sensor by 1C specify 100 as the temperature offset.
-![AirMonitor configuration](AirMonitor-HA-configuration.png)
+
+```
+Publish 100 to : homeassistant/number/featherm0/temperature_offset/set
+```
 
 ## Step 2: Calibrate the CO2 sensor
 
@@ -49,3 +52,8 @@ Publish 430 to : homeassistant/number/featherm0/co2_reference/set
 ```
 
 The automatic way requires about 5 days of continuous sensing indoors and out and this mode is not exposed via the configuration interface. 
+
+You can use the Home Assistant configuration UI instead of manually publishing to MQTT.
+
+![AirMonitor configuration](AirMonitor-HA-configuration.png)
+
