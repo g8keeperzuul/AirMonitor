@@ -51,7 +51,7 @@ In order to keep the fan as quiet as possible, a 10 ohm resistor was inserted in
 3D Models:
 1. [AirMonitor+RadiationWatcher base](../content/3d-model/Env-Sensor-Enclosure-base.stl)
 2. [AirMonitor+RadiationWatcher mount](../content/3d-model/Env-Sensor-Enclosure-mount.stl)
-3.  Body?
+3. [AirMonitor+RadiationWatcher body](../content/3d-model/Env-Sensor-Enclosure-body.stl)
 4. [AirMonitor+RadiationWatcher fan enclosure](../content/3d-model/Env-Sensor-Enclosure-shroud.stl)
 5. [AirMonitor+RadiationWatcher fan cover](../content/3d-model/Env-Sensor-Enclosure-open-fan-cover.stl)
 6. [AirMonitor+RadiationWatcher domed topper](../content/3d-model/Env-Sensor-Enclosure%20fan%20cover%202.stl)
