@@ -183,6 +183,21 @@ Refresh rate command:
 homeassistant/number/featherm0/refreshrate/set
 ```
 
+### CO2 Calibration ###
+Discovery: 
+```
+homeassistant/number/featherm0/co2_reference/config
+```
+Refresh rate state: 
+```
+homeassistant/number/featherm0/co2_reference/get
+```
+Refresh rate command: 
+```
+homeassistant/number/featherm0/co2_reference/set
+```
+See [how-to calibrate](doc/how-to-calibrate.md) for details.
+
 ## Software Dependencies ##
 
 Feature | Library | Release

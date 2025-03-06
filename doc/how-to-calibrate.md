@@ -45,10 +45,15 @@ Publish 100 to : homeassistant/number/featherm0/temperature_offset/set
 ## Step 2: Calibrate the CO2 sensor
 
 The SCD30 CO2 sensor should already be pre-calibrated. However there are two ways to do it yourself. The automatic way and the forced way.
-The forced way is preferrable, but requires that you know the CO2 PPM concentration that the SCD30 is sensing. 
+The forced way is preferrable, but requires that you know the CO2 PPM concentration that the SCD30 is sensing. Use [420 ppm](https://www.co2.earth/annual-co2) as a default. 
+
+a) Expose the device to outside air, e.g. by placing it close to an open window or outside. Direct sun light, extreme temperatures, and strong air flow have to be prevented.
+b) Confirm the stability of ambient conditions (temperature and humidity) via the MQTT messages (the embedded temerature and humidity readings nested under "carbon_dioxide_details" are specific to the SCD30):
+``` ... "carbon_dioxide":  609, "carbon_dioxide_details": {"temperature": 20.59, "humidity": 37.31} ... ```
+c) After 2 minutes, apply the reference value 420 ppm.
 To set this, simply set the CO2 Reference PPM in the device configuration setting. 
 ```
-Publish 430 to : homeassistant/number/featherm0/co2_reference/set
+Publish the integer value 420 to : homeassistant/number/featherm0/co2_reference/set
 ```
 
 The automatic way requires about 5 days of continuous sensing indoors and out and this mode is not exposed via the configuration interface. 
